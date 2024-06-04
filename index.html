@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase_version9_RealtimeDB(G'sACADEMY初学者用サンプル)</title>
+    <link rel="stylesheet" href="css/reset.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <h1>心理カウンセラー　あいの部屋</h1>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- コンテンツ表示画面 -->
+    <div class="bg-center">
+        <div id="output" class="w-64 h-80 overflow-auto bg-sky-400"></div>
+        <div class="flex justify-center">
+            <textarea id="text" class="flex w-80" placeholder="文章を入力してください"></textarea>
+            <button id="send" class="flex w-14 bg-emerald-200">送信</button>
+        </div>
+        <!-- style.cssに "overflow: auto;"を書いてみましょう！※最後に -->
+    </div>
+
+
+    <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script> -->
+    <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="https://unpkg.com/axios@1.1.2/dist/axios.min.js"></script>
+
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.1.0/firebase-app.js";
+        import { getDatabase, ref, push, set, onChildAdded, remove, onChildRemoved }
+            from "https://www.gstatic.com/firebasejs/9.1.0/firebase-database.js";
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: ,
+            authDomain: ,
+            projectId: ,
+            storageBucket: ,
+            messagingSenderId: ,
+            appId: 
+            };
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app); //RealtimeDBに接続
+        const dbRef = ref(db, "chat"); //RealtimeDB内の"chat"を使う
+
+        //データ登録(Click)
+        $("#send").on('click',function(){
+            const uname = "you";
+            const text = $('#text').val();
+
+            console.log(uname,'名前')
+            console.log(text,'テキスト')
+
+            const msg = {
+                uname: "you",
+                text: $('#text').val(),
+            }
+
+            const newPostRef = push(dbRef)
+            set(newPostRef, msg)
+
+
+            $('#text').val("");
+
+
+            // //CHAT GPTを呼び出す
+
+            const OPENAI_APIKEY = 
+            const URL = "https://api.openai.com/v1/chat/completions";
+            const systemPrompt = `
+            あなたは心理カウンセラーのロールプレイを行います。
+            以下の制約条件を厳密に守ってロールプレイを行ってください。
+
+            制約条件:
+            ・相手を批判したり、評価したり、遮ったりしてはいけません
+            ・ときどき、相手のコメントに、あいづちをしてください
+            ・相手のことを褒め、励ましてください
+            ・フランクな口調を心がけてください
+            ・質問は3回位以内に終わらせて、相手に助言をしてください
+            `
+
+
+            async function getResponse() {
+        try {
+            const response = await axios.post(
+                URL,
+                {
+                    "model": "gpt-3.5-turbo",
+                    "messages": [
+                        { "role": "system", "content":systemPrompt},
+                        { "role": "user", "content": text }
+                    ]
+                },
+                {
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${OPENAI_APIKEY}`,
+                    },
+                }
+            );
+            var chatgpt_response = response.data.choices[0].message.content;
+            // $("#response_text").val(chatgpt_response);
+
+            const resuname = "AI"
+            const restext = chatgpt_response
+
+
+            const resmsg = {
+                uname: resuname,
+                text: restext,
+            }
+            
+            console.log(resuname,'名前')
+            console.log(restext,'テキスト')
+
+            const newPostRef2 = push(dbRef)
+            set(newPostRef2, resmsg)
+        } catch (error) {
+            console.log(error);
+        }
+    }
+    getResponse();
+
+
+
+        });
+
+        //データ登録(Enter)
+
+        //最初にデータ取得＆onSnapshotでリアルタイムにデータを取得
+        //メッセージを登録すると画面に表示される
+        //AIなら左側、自分なら右側にバルーンが表示される
+        onChildAdded(dbRef, function(data){
+            const msg = data.val();
+            const key = data.key;
+
+            if(msg.uname == "you"){
+
+            let html =`
+            <div class="balloon_r">
+                <div class="says"><p>${msg.text}<p></div>
+            </div>
+            `
+
+            $("#output").append(html);
+
+            
+            }
+
+            if(msg.uname == "AI"){
+
+            let html =`
+            <div class="balloon_l">
+                <div class="says"><p>${msg.text}<p></div>
+            </div>
+            `
+
+            $("#output").append(html);
+
+
+            }   
+
+
+
+        })
+
+
+
+
+
+    </script>
+</body>
+
+</html>
